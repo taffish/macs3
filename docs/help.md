@@ -1,71 +1,73 @@
-macs3 3.0.4-r1
-
-Purpose:
-  MACS3 packaged for TAFFISH. MACS3 calls ChIP-seq, ATAC-seq and other
-  DNA enrichment peaks, and provides bedGraph and HMMRATAC subcommands.
+taf-macs3 3.0.5-r1 — call enrichment peaks and process bedGraph signals.
 
 Usage:
-  taf-macs3 -- --help
-  taf-macs3 macs3 --help
-  taf-macs3 macs3 callpeak -t chip.bam -c control.bam -f BAM -g hs -n chip
-  taf-macs3 macs3 bdgpeakcall -i signal.bdg -c 5 -l 200 -g 100 -o peaks.bed
-  taf-macs3 macs3 hmmratac -i atac.bam -f BAMPE -n atac_hmm
+  taf-macs3 macs3 SUBCOMMAND [OPTIONS]
+  taf-macs3 --help                Wrapper help
+  taf-macs3 -- --help             Upstream help
+  taf-macs3 -- --version          Upstream version
 
-Common workflows:
-  Narrow ChIP-seq:
-    taf-macs3 macs3 callpeak -t chip.bam -c control.bam -f BAM -g hs -n chip -B -q 0.01
+Quick start (run from your data directory):
+  taf-macs3 macs3 callpeak -t chip.bam -c input.bam -f BAM \
+    -g hs -n sample --outdir results
+  Read results/sample_peaks.narrowPeak and results/sample_peaks.xls.
+  Choose -g for your effective genome size; hs is not suitable for every genome.
+  Use a new output directory/name to avoid overwriting earlier results.
 
-  Broad histone peaks:
-    taf-macs3 macs3 callpeak -t histone.bam -c input.bam --broad -g hs --broad-cutoff 0.1
+Paired-end / single-cell:
+  taf-macs3 macs3 callpeak -t fragments.bam -f BAMPE -g hs \
+    -n atac --outdir results-atac
+  For a 10x fragments.tsv.gz file use -f FRAG; --barcodes can select cells.
+  MACS3 BEDPE means three columns: chromosome, fragment start, fragment end,
+  not the ten-column BEDTools BEDPE format. BED coordinates are zero-based.
+  AnnData export is a Python API: PETrackII.return_anndata(regions).
+  Run your API script with: taf-macs3 python analysis.py
 
-  Paired-end ATAC-seq:
-    taf-macs3 macs3 callpeak -f BAMPE -t atac.bam -g hs -n atac -B -q 0.01
+BedGraph and model plots:
+  taf-macs3 macs3 bdgpeakcall -i signal.bdg -c 5 -l 200 -g 30 -o peaks.bed
+  taf-macs3 macs3 SUBCOMMAND --help
+  If callpeak/predictd generated a model.R file, render it with:
+  taf-macs3 Rscript --vanilla model.R
+  The generated PDF is viewed on the host; no display server is needed.
 
-  bedGraph peak calling:
-    taf-macs3 macs3 bdgpeakcall -i signal.bdg -c 5 -l 200 -g 100 -o peaks.bed
+HMMRATAC:
+  taf-macs3 macs3 hmmratac -i atac.bam -n pilot --outdir pilot \
+    --cutoff-analysis-only
+  Review the cutoff report before choosing training/decoding cutoffs.
+  taf-macs3 macs3 hmmratac -i atac.bam -n sample --outdir hmm-results
+  --jump controls fragment-length EM updates (default 0.5).
+  Use --model FILE to reuse your trained model; --modelonly saves training.
+  No pretrained model, blacklist or reference database is bundled/downloaded.
+  Models are project-specific; verify assay, genome and training provenance.
 
-Included subcommands:
-  callpeak       main narrow/broad peak caller
-  bdgpeakcall    call peaks from bedGraph
-  bdgbroadcall   call broad peaks from bedGraph
-  bdgcmp         compare treatment/control bedGraph tracks
-  bdgopt         operate on bedGraph score columns
-  cmbreps        combine replicate bedGraph tracks
-  bdgdiff        differential peak detection from bedGraph tracks
-  filterdup      remove duplicate reads
-  predictd       estimate fragment size
-  pileup         pile up reads/fragments
-  randsample     randomly sample reads
-  refinepeak     refine peak summits
-  callvar        call variants in peak regions
-  hmmratac       HMM-based ATAC-seq/scATAC-seq peak calling
+Backend selection:
+  export TAFFISH_CONTAINER_BACKEND=docker
+  Or select podman or apptainer. Run the same commands above.
+  Both linux/amd64 and linux/arm64 are native platforms.
+  HMM floating-point results can differ across architectures.
 
-Packaged runtime:
-  macs3      3.0.4
-  python     3.10
-  numpy      1.26.4
-  scipy      1.13.1
-  sklearn    1.5.2
-  hmmlearn   0.3.3
-  cykhash    2.0.1
+Optional shared model outside the working directory (administrator-prepared):
+  MODEL_ROOT=/opt/taffish/models/macs3/PROJECT/VERSION
+  Docker:
+    TAFFISH_CONTAINER_BACKEND=docker \
+    TAFFISH_DOCKER_RUN_ARGS="-v $MODEL_ROOT:/models:ro" \
+      taf-macs3 macs3 hmmratac -i atac.bam --model /models/model.json \
+      -n reuse --outdir reuse
+  Podman:
+    TAFFISH_CONTAINER_BACKEND=podman \
+    TAFFISH_PODMAN_RUN_ARGS="-v $MODEL_ROOT:/models:ro" \
+      taf-macs3 macs3 hmmratac -i atac.bam --model /models/model.json \
+      -n reuse --outdir reuse
+  Apptainer (native Linux):
+    TAFFISH_CONTAINER_BACKEND=apptainer \
+    TAFFISH_APPTAINER_RUN_ARGS="--bind $MODEL_ROOT:/models:ro" \
+      taf-macs3 macs3 hmmratac -i atac.bam --model /models/model.json \
+      -n reuse --outdir reuse
+  Prefer absolute paths without spaces for mount roots; outputs remain in the
+  writable working directory. Use resolved physical paths for shared symlinks.
+  No automatic model discovery: select the intended model explicitly.
+  For spaces in ordinary arguments, retain literal quotes, e.g.:
+    taf-macs3 macs3 bdgpeakcall -i '"signal with spaces.bdg"' -o peaks.bed
 
-Notes:
-  This app calls macs3 by default.
-  Use taf-macs3 macs3 SUBCOMMAND ... for upstream MACS3 subcommands.
-  The taf-macs3 -- form is mainly for option-leading arguments such as --help.
-  No reference genome, blacklist, alignment tool, sample sheet, or workflow
-  logic is bundled.
-  MACS3 normally runs offline once input alignment, fragment or bedGraph files
-  are available.
-  Upstream warns that hmmratac results on non-x86 Linux architectures may differ
-  because of scientific calculation library behavior.
-
-Detailed documentation:
+More help:
+  https://github.com/taffish/macs3
   https://macs3-project.github.io/MACS/
-  https://github.com/macs3-project/MACS
-
-Wrapper options:
-  taf-macs3 --help       Show this TAFFISH help.
-  taf-macs3 --version    Show TAFFISH wrapper version.
-  taf-macs3 --compile    Compile the TAFFISH wrapper.
-  taf-macs3 -- --help    Pass option-leading arguments to macs3.

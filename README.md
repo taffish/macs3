@@ -1,182 +1,186 @@
 # macs3
 
-`macs3` packages MACS3, the current MACS command-line suite for ChIP-seq,
-ATAC-seq, and other DNA enrichment peak-calling workflows, for TAFFISH.
-
-Package identity:
-
-- name: `macs3`
-- command: `taf-macs3`
-- kind: `tool`
-- version: `3.0.4-r1`
-- license: Apache-2.0 for the TAFFISH packaging
-- upstream: <https://github.com/macs3-project/MACS>
+`macs3` packages MACS3 **3.0.5-r1** for TAFFISH, retaining the upstream CLI
+and Python API. MACS identifies enrichment peaks in ChIP-seq/ATAC-seq and other
+DNA-enrichment assays; it is not an aligner or a complete analysis workflow.
 
 ## What This App Packages
 
-This app installs MACS3 3.0.4 from the official PyPI source distribution, pinned
-by SHA256, with the GitHub upstream tag `v3.0.4` recorded for update tracking.
-The packaged default command is `macs3`.
-
-MACS3 is a peak-calling and bedGraph analysis toolkit. It can call narrow and
-broad peaks, operate on bedGraph tracks, estimate fragment size, pile up reads,
-sample reads, refine peaks, call variants in peak regions, and run the HMMRATAC
-ATAC-seq mode.
+- Command: `taf-macs3`; thin two-line tool wrapper with automatic command mode.
+- Official [v3.0.5](https://github.com/macs3-project/MACS/releases/tag/v3.0.5),
+  commit `c5443190e3edfeb301cc94acf450e2b2c026a223`.
+- Verified [PyPI source distribution](https://pypi.org/project/MACS3/3.0.5/):
+  SHA256 `22cb5e22903ef0598e8078cc19d4593cb43be43870808335c98e0f7298597224`.
+- Native `linux/amd64` and `linux/arm64`; no emulation flags or upstream patches.
+- Python 3.12.14 from a digest-pinned multi-platform official image, compiled
+  MACS3 extensions (including bundled fermi-lite/SIMDe), NumPy 2.2.6, SciPy
+  1.15.3, pandas 2.2.3, AnnData 0.11.4, scikit-learn 1.6.1 and hmmlearn 0.3.3.
+  Full pins: [requirements.txt](docker/requirements.txt).
+- Base R/Rscript for upstream-generated peak-model PDF scripts; gzip and zlib
+  for compressed data. No external samtools is needed by MACS3's internal BAM reader.
+- Stable dependency inventory and source record in `/opt/macs3/share/doc/macs3`;
+  licenses in `/opt/macs3/share/licenses/macs3`, Python package metadata and
+  Debian `/usr/share/doc`. Embedded third-party source archive preserves its notices.
 
 ## Scope
 
-This app supports the upstream MACS3 command surface, including:
+The complete upstream command set is retained: callpeak, bdgpeakcall, bdgbroadcall,
+bdgcmp, bdgopt, bdgdiff, cmbreps, filterdup, predictd, pileup, randsample,
+refinepeak, callvar and hmmratac. New sparse barcode-by-peak AnnData export is
+available through `PETrackII.return_anndata(regions)`; h5ad writing/reading is included.
 
-- `macs3 callpeak`
-- `macs3 bdgpeakcall`
-- `macs3 bdgbroadcall`
-- `macs3 bdgcmp`
-- `macs3 bdgopt`
-- `macs3 cmbreps`
-- `macs3 bdgdiff`
-- `macs3 filterdup`
-- `macs3 predictd`
-- `macs3 pileup`
-- `macs3 randsample`
-- `macs3 refinepeak`
-- `macs3 callvar`
-- `macs3 hmmratac`
+Not bundled: aligners, production inputs, genome references/blacklists,
+pretrained HMMs, a Jupyter/Scanpy analysis environment or genome browsers.
+No normal analysis command downloads these implicitly.
 
-This app does not align reads, sort or index BAM files, provide reference
-genomes, download public datasets, choose an experimental design, or validate
-peak-calling parameters for a specific assay.
+GUI discovery checked v3.0.5 pyproject/setup, official installation and the
+[notebook examples](https://github.com/macs3-project/MACS/tree/v3.0.5/notebooks).
+There are no MACS3 GUI/server entry points, package extras or linked dedicated
+viewer. The PBMC notebooks are tutorials executing the same Python API inside
+a general Jupyter environment; their Scanpy/matplotlib downstream exploration
+is not a MACS3 service. This app preserves the CLI/API contract, not an
+interactive notebook distribution. Use your separate notebook/Scanpy environment
+to explore exported h5ad files. The packaged R path produces static PDFs,
+viewed on the host; no browser service, ports or noVNC lifecycle is involved.
 
-## Container Contents
+## Installation and Usage
 
-- `macs3`: MACS3 3.0.4 command-line suite.
-- `python`: Python 3.10 runtime with MACS3 and its scientific Python
-  dependencies.
-- Python packages: NumPy 1.26.4, SciPy 1.13.1, scikit-learn 1.5.2, hmmlearn
-  0.3.3, and cykhash 2.0.1.
-- Upstream license, README, ChangeLog, package metadata, and pinned package
-  list under `/opt/macs3/share/doc/macs3`.
-
-## Usage
-
-Access upstream help:
+Install the published version via `taf install macs3`. From a directory containing inputs:
 
 ```sh
+taf-macs3 --help
 taf-macs3 -- --help
-taf-macs3 macs3 --help
-taf-macs3 macs3 callpeak --help
+taf-macs3 -- --version
+taf-macs3 macs3 callpeak -t chip.bam -c input.bam -f BAM -g hs -n sample --outdir results
+taf-macs3 macs3 callpeak -t fragments.bam -f BAMPE -g hs -n atac --outdir results-atac
+taf-macs3 macs3 bdgpeakcall -i signal.bdg -c 5 -l 200 -g 30 -o peaks.bed
+taf-macs3 python analysis.py
+taf-macs3 Rscript --vanilla model.R
 ```
 
-Narrow peak calling:
+Select your effective genome size; `hs` is an example, not a universal default.
+For upstream subcommands always include `macs3`: `taf-macs3 callpeak ...`
+would instead request an executable called callpeak. Wrapper `--help` and
+`--version` differ from upstream `-- --help` and `-- --version`.
+Current TAFFISH command mode constructs a shell line: paths with spaces require
+literal quotes, for example `taf-macs3 macs3 bdgpeakcall -i '"signal with spaces.bdg"' -o peaks.bed`.
+Use simple names for sample labels embedded by upstream in generated R code.
 
-```sh
-taf-macs3 macs3 callpeak -t chip.bam -c control.bam -f BAM -g hs -n chip -B -q 0.01
-```
+## Inputs and Outputs
 
-Broad peak calling:
-
-```sh
-taf-macs3 macs3 callpeak -t histone.bam -c input.bam --broad -g hs --broad-cutoff 0.1
-```
-
-ATAC-seq paired-end peak calling:
-
-```sh
-taf-macs3 macs3 callpeak -f BAMPE -t atac.bam -g hs -n atac -B -q 0.01
-```
-
-HMMRATAC mode:
-
-```sh
-taf-macs3 macs3 hmmratac -i atac.bam -f BAMPE -n atac_hmm
-```
-
-Call peaks from a bedGraph track:
-
-```sh
-taf-macs3 macs3 bdgpeakcall -i signal.bdg -c 5 -l 200 -g 100 -o peaks.bed
-```
-
-## Command Mode
-
-TAFFISH command mode is enabled. Because MACS3 uses subcommands, normal
-subcommand calls should use the explicit upstream command form:
-
-```sh
-taf-macs3 macs3 callpeak ...
-taf-macs3 macs3 bdgcmp ...
-taf-macs3 macs3 hmmratac ...
-```
-
-The `taf-macs3 -- --help` form is mainly for option-leading arguments passed to
-the default `macs3` command. A call such as `taf-macs3 callpeak ...` would be
-interpreted as command mode and try to run an executable named `callpeak`.
-
-## Inputs
-
-| Input | Meaning | Notes |
-| --- | --- | --- |
-| BAM/SAM/BED/ELAND/Bowtie/BAMPE/BEDPE/FRAG | Read alignment or fragment input | Accepted formats depend on the selected MACS3 subcommand. |
-| bedGraph | Signal track input | Used by `bdgpeakcall`, `bdgbroadcall`, `bdgcmp`, `bdgopt`, `cmbreps`, and `bdgdiff`. |
-| genome size | Effective genome size or alias | Common aliases such as `hs`, `mm`, and explicit numeric sizes are handled by upstream MACS3. |
-| barcode list | Optional scATAC FRAG restriction | Used by MACS3 3.0.4 `hmmratac` with FRAG input. |
-
-## Output Notes
-
-Outputs are subcommand-specific. `callpeak` commonly writes `*_peaks.xls`,
-`*.narrowPeak`, `*.broadPeak`, `*_summits.bed`, and optional treatment/control
-bedGraph files. bedGraph subcommands write BED-like or bedGraph-like tracks.
-`hmmratac` writes ATAC peak and state outputs according to upstream options.
+- BED is zero-based; BAM is parsed internally. Use BAMPE for paired-end fragments.
+- MACS3 BEDPE is **three columns**, not BEDTools' ten-column BEDPE.
+- FRAG is the five-column 10x fragment format (chromosome, start, end, barcode,
+  count); gzip input is supported and `--barcodes` selects a subset.
+- Control alignments are optional; `-g`, model/shift settings, duplicates and
+  thresholds are scientific choices. MACS2-era defaults should not be assumed.
+- callpeak writes peaks.xls, narrowPeak/summits or broadPeak/gappedPeak;
+  `-B` requests pileup/control bedGraphs. Genome tracks are not browser sessions.
+- predictd/model-enabled callpeak may write an R script; execute Rscript in a
+  writable output directory. `--nomodel` does not generate a model plot.
+- hmmratac's `--cutoff-analysis-only` writes a TSV and now exits successfully;
+  assess it before selecting `-l/-u/-c`. `--jump` defaults to 0.5.
+  `--modelonly` writes a trained JSON; `--model` reuses it.
+- Output filenames may be overwritten by upstream. Use a new output name/directory.
+  Scratch and Python/R temporary files belong in /tmp, not the installed prefix.
 
 ## Resources, Databases, and Platform
 
-No production database or reference bundle is packaged. MACS3 normally runs
-offline once the user provides alignment, fragment, bedGraph, genome-size, and
-other input files. The container does not need a network connection for normal
-analysis.
+Resource classification: alignments, cell lists, genome sizes, blacklist BEDs,
+training regions and trained HMM JSONs are **project-specific inputs**, not members
+of a downloadable MACS3 pretrained-model catalog. v3.0.5 has no official model/
+database downloader or catalog. There is consequently no automatic installer,
+root-once download, auto-discovery, override or disable helper: choosing a model
+automatically could silently select a scientifically inappropriate assay/genome.
 
-This app is declared for native `linux/amd64` and `linux/arm64` builds. Upstream
-MACS3 documents testing on x86_64 and aarch64, but also warns that `hmmratac`
-results on non-x86 Linux architectures can differ because of scientific
-calculation library behavior. For strict cross-platform reproducibility of
-`hmmratac`, compare results on the same architecture.
+A team can nevertheless prepare a model once and reuse it read-only.
+Recommended layouts are `~/.local/share/taffish/models/macs3/PROJECT/VERSION/`,
+`/usr/local/share/taffish/models/macs3/PROJECT/VERSION/` or
+`/opt/taffish/models/macs3/PROJECT/VERSION/`. The administrator copies an already
+trained, approved model (not a generic model obtained from this app), records
+its SHA256, MACS3/dependency versions, assay/genome, training parameters and
+input provenance. Use administrator ownership, traversable 0755 directories
+and readable 0644 files; ordinary users need read, not write, access.
+Never change shared system permissions as part of an analysis run.
+Resource sharing/redistribution follows the source data/model's own terms:
+the software's BSD license does not grant rights to third-party references
+or 10x tutorial data. Download/project license validation is the data owner's responsibility.
 
-## Boundaries
+Each invocation explicitly selects its JSON. Resolve symlinks to a physical
+root; a read-only bind exposes only that root, while outputs remain in the
+working-directory bind. For example set
+`MODEL_ROOT=/opt/taffish/models/macs3/PROJECT/VERSION`, then use:
 
-This app packages MACS3 itself. It does not include aligners, read mappers,
-workflow logic, genome FASTA files, blacklists, spike-in normalization, sample
-metadata handling, replicate consensus logic, QC reporting, or downstream
-annotation/visualization tools.
+| Backend | Optional site policy for this invocation |
+| --- | --- |
+| Docker | `TAFFISH_CONTAINER_BACKEND=docker TAFFISH_DOCKER_RUN_ARGS="-v $MODEL_ROOT:/models:ro" taf-macs3 macs3 hmmratac -i atac.bam --model /models/model.json -n reuse --outdir reuse` |
+| Podman | `TAFFISH_CONTAINER_BACKEND=podman TAFFISH_PODMAN_RUN_ARGS="-v $MODEL_ROOT:/models:ro" taf-macs3 macs3 hmmratac -i atac.bam --model /models/model.json -n reuse --outdir reuse` |
+| Apptainer | `TAFFISH_CONTAINER_BACKEND=apptainer TAFFISH_APPTAINER_RUN_ARGS="--bind $MODEL_ROOT:/models:ro" taf-macs3 macs3 hmmratac -i atac.bam --model /models/model.json -n reuse --outdir reuse` |
 
-## Testing
+No model root is required for ordinary peak calling. Missing/bad explicit input
+fails rather than downloading a replacement. Local project paths inside the
+working directory are the simplest alternative to the optional bind.
 
-The container build and smoke tests cover:
+## Backend Capability and Validation
 
-- MACS3 version, top-level help, and representative subcommand help.
-- Python runtime imports for MACS3, NumPy, SciPy, scikit-learn, hmmlearn, and
-  cykhash.
-- Dynamic library completeness for compiled Python extensions.
-- A tiny synthetic `callpeak` run that writes MACS3 peak-calling outputs and
-  treatment pileup bedGraph.
-- A tiny synthetic `bdgpeakcall` run that calls peaks from bedGraph input.
+The 3.0.5-r1 candidate passed native builds from the repository-root context
+and the following offline validation, including actual generated wrappers:
 
-The smoke tests do not benchmark sensitivity, compare biological peak quality,
-or validate assay-specific parameter choices on production data.
+| Native platform | Docker | Podman | Apptainer |
+| --- | --- | --- | --- |
+| linux/amd64 (xjp) | PASS | PASS | PASS: actual read-only SIF from the same candidate OCI |
+| linux/arm64 | PASS | PASS | Not separately validated |
+
+There are 144 fresh exact manifest probes (combined command existence, each
+individual existence probe and each test; Docker/Podman normal and read-only
+roots, plus SIF) and 125 real-wrapper calls. Wrapper checks include ordinary
+users, real read-only shared-model mounts, denied writes, filenames with spaces,
+persistent output ownership, HMM fragment EM/model reuse, BAMPE peaks, callvar,
+gzip inputs and rendered two-page R PDFs.
+
+Native platform and backend evidence are tracked separately. The untested
+arm64/Apptainer combination is not a PASS claim; there is no backend-specific
+architecture/device/service path in this app requiring that combination.
+HMM training is tested on both native architectures. HMM floating-point
+training/decoding can differ across CPU/library platforms; no bit-identical
+scientific output promise is made. Apptainer requires native Linux; a Mac is
+not an Apptainer runner. The app has no GPU/device/service options.
+
+## Troubleshooting
+
+- Empty peaks: check input format, effective genome size and cutoffs rather than
+  assuming container failure. Sparse data may not support peak-model fitting.
+- R script absent: `--nomodel` or insufficient symmetric peaks can explain this.
+- Model reuse fails: verify JSON identity and assay compatibility, path visibility
+  and read permission; do not grant model directories write permission.
+- Read-only output error: put outputs in the working directory, not /opt or /models.
+- Missing zarr/Scanpy/Jupyter: those independent analysis frontends/formats are not
+  this app's contract; export h5ad and use a dedicated downstream environment.
+
+## Testing and Packaging Boundary
+
+[smoke] tests run independently without network: identity/all command help,
+compiled extension imports, tiny summit/bedGraph calls, AnnData count preservation
+and h5ad roundtrip, HMM save/load/decode and cutoff-only, and upstream R exporter
+to PDF. Dockerfile executes only identity/import/tiny peak gates; no numerical
+HMM golden matrix or graphics stack is tested at build time.
+
+Python compiler headers/static archives/bytecode are removed before copying the
+runtime prefix into the final stage. Non-runtime pandas/SciPy/scikit-learn test
+suites are removed, while NumPy's test tree is retained because its testing API
+imports it at runtime. Runtime modules/data, package metadata and notices are
+retained. Final Docker image sizes are 500.84 MiB (amd64) and 515.95 MiB (arm64),
+not compressed registry transfer sizes. The arm64 optimization removed about
+50 MiB; final imports, independent offline smoke and real wrappers were rerun.
+The runtime prefix is 282 MiB on amd64 and 274 MiB on arm64.
+
+Tests are packaging checks, not a full benchmark, production PBMC/ChIP-seq
+scientific acceptance or a claim of bitwise HMM reproducibility across architectures.
 
 ## License and Citation
 
-TAFFISH app packaging: Apache-2.0.
-
-Upstream MACS3 software: BSD-3-Clause. Bundled Python packages keep their own
-license terms.
-
-Please cite MACS according to upstream guidance:
-
-Zhang et al. 2008. Model-based Analysis of ChIP-Seq (MACS). Genome Biology.
-DOI: `10.1186/gb-2008-9-9-r137`.
-
-## Upstream Links
-
-- Documentation: <https://macs3-project.github.io/MACS/>
-- Source repository: <https://github.com/macs3-project/MACS>
-- Release: <https://github.com/macs3-project/MACS/releases/tag/v3.0.4>
-- PyPI package: <https://pypi.org/project/MACS3/3.0.4/>
+Packaging: Apache-2.0. MACS3: BSD-3-Clause. Embedded fermi-lite/SIMDe and Python/R
+components retain their own licenses and notices.
+MACS3's current citation is [MACS3: A Peak-calling Platform for Bulk and Single-cell
+Regulatory Genomics (2026)](https://doi.org/10.1093/gpbjnl/qzag097).
+The 2008 MACS1 paper is not the sole citation recommended for MACS3.

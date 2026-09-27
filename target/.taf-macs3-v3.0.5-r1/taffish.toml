@@ -1,0 +1,50 @@
+[package]
+name = "macs3"
+kind = "tool"
+version = "3.0.5"
+release = 1
+license = "Apache-2.0"
+main = "src/main.taf"
+
+[repository]
+url = "https://github.com/taffish/macs3"
+
+[command]
+name = "taf-macs3"
+
+[runtime]
+pipe = true
+command_mode = true
+
+[container]
+image = "ghcr.io/taffish/macs3:3.0.5-r1"
+dockerfile = "docker/Dockerfile"
+build_platforms = "linux/amd64,linux/arm64"
+
+[meta]
+domain = "bio"
+categories = ["ChIP-seq", "ATAC-seq", "peak-calling", "epigenomics", "genomics"]
+keywords = ["MACS3", "MACS", "ChIP-seq", "ATAC-seq", "peak calling", "broad peaks", "bedGraph", "hmmratac", "callpeak", "pileup", "bdgcmp"]
+description = "MACS3 3.0.5 runtime for ChIP-seq, ATAC-seq, DNA enrichment peak calling, bedGraph operations, and HMMRATAC."
+
+[upstream]
+name = "MACS3"
+type = "github"
+repo = "macs3-project/MACS"
+homepage = "https://macs3-project.github.io/MACS/"
+manual = "https://macs3-project.github.io/MACS/"
+release_url = "https://github.com/macs3-project/MACS/releases/tag/v3.0.5"
+downloads = "https://files.pythonhosted.org/packages/b2/4b/d228c770577e48a11bdad778130590f0f68e7659e3d5bafa1bdef7ce25ad/macs3-3.0.5.tar.gz"
+version = "3.0.5"
+commit = "c5443190e3edfeb301cc94acf450e2b2c026a223"
+license = "BSD-3-Clause"
+citation = "MACS3: A Peak-calling Platform for Bulk and Single-cell Regulatory Genomics (2026)"
+doi = "10.1093/gpbjnl/qzag097"
+watch = "tags"
+strip_prefix = "v"
+
+[smoke]
+backend = "docker"
+timeout = 600
+exist = ["macs3", "python", "python3", "bash", "sh", "gzip", "ldd", "Rscript"]
+test = ["python /opt/macs3/share/testdata/smoke.py identity", "python /opt/macs3/share/testdata/smoke.py imports", "python /opt/macs3/share/testdata/smoke.py peaks", "python /opt/macs3/share/testdata/smoke.py anndata", "python /opt/macs3/share/testdata/smoke.py hmm", "python /opt/macs3/share/testdata/smoke.py plots", "python /opt/macs3/share/testdata/smoke.py bedgraph"]

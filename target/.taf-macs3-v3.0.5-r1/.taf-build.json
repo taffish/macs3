@@ -1,0 +1,6 @@
+{
+  "artifact": "taf-macs3-v3.0.5-r1",
+  "schema": "taffish.build/v1",
+  "source_sha256": "a7221556f1e148ff08575ab8a8bedf0f6ba16375215c9e226624c1ea926df0fd",
+  "wrapper_sha256": "84866691db5c60312af9714cdcd1992808e66ecb0e1416d9e826d091c0a9433c"
+}
