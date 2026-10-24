@@ -18,14 +18,16 @@ def run(*args):
     return result.stdout
 
 def identity():
-    assert run('macs3', '--version').strip() == 'macs3 3.0.5'
+    assert run('macs3', '--version').strip() == 'macs3 3.1.0'
     for cmd in ('callpeak', 'bdgpeakcall', 'bdgbroadcall', 'bdgcmp', 'bdgopt', 'cmbreps', 'bdgdiff', 'filterdup', 'predictd', 'pileup', 'randsample', 'refinepeak', 'callvar', 'hmmratac'):
         assert cmd in run('macs3', cmd, '--help')
     assert '--jump' in run('macs3', 'hmmratac', '--help')
-    assert 'source_sha256=22cb5e22903ef0598e8078cc19d4593cb43be43870808335c98e0f7298597224' in Path('/opt/macs3/share/doc/macs3/source.txt').read_text()
+    assert '--threads' in run('macs3', 'callpeak', '--help')
+    assert '--process-backend' in run('macs3', 'callpeak', '--help')
+    assert 'source_sha256=aae548b86ab652717dca281fa2e33645fc1dc8091264ccbf7ce09cf8a13532e0' in Path('/opt/macs3/share/doc/macs3/source.txt').read_text()
 
 def imports():
-    assert md.version('MACS3') == '3.0.5'
+    assert md.version('MACS3') == '3.1.0'
     for name in ('numpy', 'scipy', 'pandas', 'anndata', 'sklearn', 'hmmlearn', 'h5py'):
         importlib.import_module(name)
     import MACS3
@@ -131,8 +133,26 @@ def bedgraph():
         run('macs3', 'cmbreps', '-i', d/'a.bdg', d/'b.bdg', '-m', 'mean', '-o', d/'mean.bdg')
         assert 'chr1' in (d/'mean.bdg').read_text()
 
+def parallel():
+    # Runtime-only coverage of the new execution policy; no performance claim.
+    with tempfile.TemporaryDirectory(prefix='macs3-parallel-') as directory:
+        d = Path(directory)
+        rows = [f'{chrom}\t{100+i%30}\t{180+i%30}\tcellA\t2'
+                for chrom in ('chr1', 'chr2') for i in range(100)]
+        (d/'fragments.tsv').write_text('\n'.join(rows))  # No terminal newline.
+        outputs = []
+        for backend in ('serial', 'auto'):
+            run('macs3', 'callpeak', '-t', d/'fragments.tsv', '-f', 'FRAG',
+                '-g', '2000', '-n', 'test', '--outdir', d/backend, '--nomodel',
+                '--keep-dup', 'all', '--nolambda', '-p', '0.99', '--threads', '2',
+                '--process-backend', backend)
+            output = (d/backend/'test_peaks.narrowPeak').read_text()
+            assert 'chr1' in output and 'chr2' in output
+            outputs.append(output)
+        assert outputs[0] == outputs[1], 'serial/auto disagree on tiny fixed input'
+
 if __name__ == '__main__':
-    modes = dict(identity=identity, imports=imports, peaks=peaks, anndata=anndata_export, hmm=hmm, plots=plots, bedgraph=bedgraph)
+    modes = dict(identity=identity, imports=imports, peaks=peaks, anndata=anndata_export, hmm=hmm, plots=plots, bedgraph=bedgraph, parallel=parallel)
     if sys.argv[1] == 'prepare-hmm':
         destination = Path(sys.argv[2]); destination.mkdir(parents=True, exist_ok=True)
         hmm_model(destination/'model.json'); fragments(destination/'fragments.bedpe')

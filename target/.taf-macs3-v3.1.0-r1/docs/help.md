@@ -1,4 +1,4 @@
-taf-macs3 3.0.5-r1 — call enrichment peaks and process bedGraph signals.
+taf-macs3 3.1.0-r1 — call enrichment peaks and process bedGraph signals.
 
 Usage:
   taf-macs3 macs3 SUBCOMMAND [OPTIONS]
@@ -12,6 +12,9 @@ Quick start (run from your data directory):
   Read results/sample_peaks.narrowPeak and results/sample_peaks.xls.
   Choose -g for your effective genome size; hs is not suitable for every genome.
   Use a new output directory/name to avoid overwriting earlier results.
+  Add --threads N to set the CPU budget for supported commands.
+  For callpeak/callvar, --process-backend serial disables process workers;
+  the default auto can use workers. More workers can increase peak memory.
 
 Paired-end / single-cell:
   taf-macs3 macs3 callpeak -t fragments.bam -f BAMPE -g hs \
